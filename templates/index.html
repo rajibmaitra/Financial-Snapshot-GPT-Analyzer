@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Financial Snapshot + GPT Analyzer</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+
+<body>
+  <main class="container">
+    <header>
+      <h1>Financial Snapshot + GPT Analyzer</h1>
+      <p class="tagline">Educational tool only — not financial advice.</p>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="alerts">
+          {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <section class="panel form-panel">
+      <h2>1. Enter Your Snapshot</h2>
+      <form method="post" class="input-grid">
+        <label>
+          Name
+          <input type="text" name="name" placeholder="Optional" value="{{ form_values.get('name','') }}" />
+        </label>
+        <label>
+          Current age (years)
+          <input type="number" step="1" min="0" name="current_age" required value="{{ form_values.get('current_age','') }}" />
+        </label>
+        <label>
+          Target retirement age
+          <input type="number" step="1" min="0" name="target_age" required value="{{ form_values.get('target_age','') }}" />
+        </label>
+        <label>
+          Annual after-tax income ($)
+          <input type="number" step="0.01" min="0" name="income" required value="{{ form_values.get('income','') }}" />
+        </label>
+        <label>
+          Total debt balance ($)
+          <input type="number" step="0.01" min="0" name="total_debt" required value="{{ form_values.get('total_debt','') }}" />
+        </label>
+        <label>
+          Avg. debt interest rate (%)
+          <input type="number" step="0.01" min="0" name="avg_debt_rate" required value="{{ form_values.get('avg_debt_rate','') }}" />
+        </label>
+        <label>
+          Total financial assets ($)
+          <input type="number" step="0.01" min="0" name="assets" required value="{{ form_values.get('assets','') }}" />
+        </label>
+        <label>
+          Monthly savings ($)
+          <input type="number" step="0.01" min="0" name="monthly_savings" required value="{{ form_values.get('monthly_savings','') }}" />
+        </label>
+        <label>
+          Risk appetite
+          <select name="risk">
+            {% set selected_risk = form_values.get('risk','moderate') %}
+            <option value="conservative" {% if selected_risk=='conservative' %}selected{% endif %}>Conservative</option>
+            <option value="moderate" {% if selected_risk=='moderate' %}selected{% endif %}>Moderate</option>
+            <option value="aggressive" {% if selected_risk=='aggressive' %}selected{% endif %}>Aggressive</option>
+          </select>
+        </label>
+        <div class="full-row">
+          <button type="submit">Generate Educational Scenarios</button>
+        </div>
+      </form>
+      <p class="fine-print">
+        We never store your answers. They are sent directly to OpenAI's API for this single analysis.
+      </p>
+    </section>
+
+    {% if profile %}
+      <section class="panel result-panel">
+        <h2>2. Quick Calculations</h2>
+        <ul class="profile-list">
+          <li><strong>Net worth:</strong> {{ format_currency(profile.net_worth) }}</li>
+          <li><strong>Years to goal:</strong> {{ "%.1f"|format(profile.years_to_goal) }}</li>
+          <li><strong>Yearly savings:</strong> {{ format_currency(profile.yearly_savings) }}</li>
+          <li><strong>Projected net worth at goal:</strong> {{ format_currency(profile.projected_net_worth_at_goal) }}</li>
+          <li><strong>Debt-to-income ratio:</strong>
+            {% if profile.debt_to_income_ratio is not none %}
+              {{ "%.2f"|format(profile.debt_to_income_ratio) }}
+            {% else %}
+              Not available
+            {% endif %}
+          </li>
+        </ul>
+      </section>
+    {% endif %}
+
+    {% if market_data %}
+      <section class="panel result-panel">
+        <h2>3. Market Snapshot (~90 days)</h2>
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Period</th>
+                <th>Start Close</th>
+                <th>End Close</th>
+                <th>% Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for symbol, info in market_data.items() %}
+                <tr>
+                  <td>
+                    <strong>{{ info.label }}</strong><br />
+                    <span class="symbol">{{ symbol }}</span>
+                  </td>
+                  {% if info.error %}
+                    <td colspan="4" class="error">Error: {{ info.error }}</td>
+                  {% else %}
+                    <td>{{ info.start_date }} → {{ info.end_date }}</td>
+                    <td>{{ format_currency(info.start_price) }}</td>
+                    <td>{{ format_currency(info.end_price) }}</td>
+                    <td>{{ "%.2f"|format(info.pct_change_90d) }}%</td>
+                  {% endif %}
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    {% endif %}
+
+    {% if summary %}
+      <section class="panel result-panel">
+        <h2>4. Summary Sent to GPT</h2>
+        <pre class="summary-block">{{ summary }}</pre>
+      </section>
+    {% endif %}
+
+    {% if gpt_text %}
+      <section class="panel result-panel">
+        <h2>5. GPT Educational Scenarios</h2>
+        <div class="gpt-output">{{ gpt_text | replace('\n', '<br>') | safe }}</div>
+      </section>
+    {% elif gpt_error %}
+      <section class="panel result-panel">
+        <h2>GPT Response</h2>
+        <p class="error">Unable to fetch response: {{ gpt_error }}</p>
+      </section>
+    {% endif %}
+
+    <footer>
+      <p class="disclaimer">
+        This project is for educational use only. It cannot replace personalized financial, legal, or tax advice.
+      </p>
+      <p class="repo-hint">
+        Ready to share? Commit the project to GitHub and deploy with the guide below in README.
+      </p>
+    </footer>
+  </main>
+</body>
+
+</html>
